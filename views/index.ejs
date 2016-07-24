@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html ng-app="app">
+  <head>
+    <title><%= title %></title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+  </head>
+  <body>
+    <ng-view></ng-view>
+
+    <!-- Libraries -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.25/angular.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.25/angular-route.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.25/angular-resource.min.js"></script>
+
+    <!--<div ng-controller="TodoController">
+        hello!!!
+        <ul>
+            <li ng-repeat="x in myData">
+                {{x.address + ',' + x.address_detail}}
+            </li>
+        </ul>
+
+    </div>-->
+    <div id="map" style="width:800px;height:700px;"></div>
+    <p id="result"></p>
+
+    <script type="text/javascript" src="//apis.daum.net/maps/maps3.js?apikey=7609a158f26dcdd1dad065d84110ef8d"></script>
+    <script>
+
+        var container = document.getElementById('map'); //지도를 담을 영역의 DOM 레퍼런스
+        var options = { //지도를 생성할 때 필요한 기본 옵션
+            center: new daum.maps.LatLng(37.4845143707298, 127.0541723119617), //지도의 중심좌표.
+            level: 3 //지도의 레벨(확대, 축소 정도)
+        };
+
+        var map = new daum.maps.Map(container, options); //지도 생성 및 객체 리턴
+        // 마커가 표시될 위치입니다
+        //var markerPosition  = new daum.maps.LatLng(37.4845143707298, 127.0541723119617);
+
+        // 마커를 생성합니다
+        /*var marker = new daum.maps.Marker({
+            position: markerPosition
+        });*/
+
+        // 마커가 지도 위에 표시되도록 설정합니다
+        //marker.setMap(map);
+
+        // 지도가 이동, 확대, 축소로 인해 지도영역이 변경되면 마지막 파라미터로 넘어온 함수를 호출하도록 이벤트를 등록합니다
+        daum.maps.event.addListener(map, 'tilesloaded', function() {
+
+            // 지도 영역정보를 얻어옵니다
+            var bounds = map.getBounds();
+            // 영역정보의 남서쪽 정보를 얻어옵니다
+            var swLatlng = bounds.getSouthWest();
+            // 영역정보의 북동쪽 정보를 얻어옵니다
+            var neLatlng = bounds.getNorthEast();
+
+            var query = '?latS=' + swLatlng.getLat() + '&latE=' + neLatlng.getLat() + '&lngS=' + swLatlng.getLng() + '&lngE=' + neLatlng.getLng();
+
+            // 데이터를 가져오기 위해 jQuery를 사용합니다
+            // 데이터를 가져와 마커를 생성하고 클러스터러 객체에 넘겨줍니다
+            $.get('/getAddress/coord/range' + query, function(data) {
+
+                var coordList = data.positions;
+                for (var i = 0; i < coordList.length; i ++) {
+                    // 마커를 생성합니다
+                    var marker = new daum.maps.Marker({
+                        map: map, // 마커를 표시할 지도
+                        position: new daum.maps.LatLng(coordList[i].lat, coordList[i].lng)// 마커를 표시할 위치
+                    });
+
+                    // 마커에 표시할 인포윈도우를 생성합니다
+                    var infowindow = new daum.maps.InfoWindow({
+                        content: coordList[i].detail_name // 인포윈도우에 표시할 내용
+                    });
+                    daum.maps.event.addListener(marker, 'mouseover', makeOverListener(map, marker, infowindow));
+                    daum.maps.event.addListener(marker, 'mouseout', makeOutListener(infowindow));
+                }
+
+                /*var message = '<p>영역좌표는 남서쪽 위도, 경도는  ' + swLatlng.getLat() + '/' + swLatlng.getLng() + '이고 <br>';
+                message += '북동쪽 위도, 경도는  ' + neLatlng.toString() + '입니다 </p>';
+
+                var resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = message + JSON.stringify(data);*/
+            });
+
+        });
+
+        // 인포윈도우를 표시하는 클로저를 만드는 함수입니다
+        function makeOverListener(map, marker, infowindow) {
+            return function() {
+                infowindow.open(map, marker);
+            };
+        }
+
+        // 인포윈도우를 닫는 클로저를 만드는 함수입니다
+        function makeOutListener(infowindow) {
+            return function() {
+                infowindow.close();
+            };
+        }
+
+        angular
+                .module('app', [])
+                .controller('TodoController', function ($scope, $http) {
+                    $http.get("/getAddress/detail").then(function(response) {
+                        str = JSON.stringify(response);
+                        str = JSON.stringify(response, null, 4); // (Optional) beautiful indented output.
+                        console.log('str =' + str); // Logs output to dev tools console.
+                        console.log('response = ' + response.data[0].address);
+                        $scope.myData = response.data;
+                    });
+                });
+    </script>
+  </body>
+</html>
